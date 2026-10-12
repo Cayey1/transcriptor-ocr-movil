@@ -3,25 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Transcriptor OCR Móvil</title>
+  <title>Transcriptor OCR Móvil Pro</title>
   <meta name="theme-color" content="#2563eb">
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
+  <link rel="icon" href="icon-192.png">
 
-  <!-- Tesseract.js para OCR en el navegador (offline y móvil) -->
+  <!-- Tesseract.js (Offline OCR) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <!-- SheetJS para generar archivos Excel (.xlsx) -->
+  <!-- SheetJS (Excel .xlsx export) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Cropper.js (Herramienta táctil para recortar texto) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
   <style>
     :root {
       --primary: #2563eb;
       --primary-dark: #1d4ed8;
+      --ai-purple: #7c3aed;
+      --ai-purple-dark: #6d28d9;
       --success: #16a34a;
-      --success-dark: #15803d;
       --amber: #d97706;
       --bg: #f8fafc;
       --card-bg: #ffffff;
@@ -43,45 +47,91 @@
       background-color: var(--bg);
       color: var(--text);
       padding: 12px;
-      padding-bottom: 40px;
-      max-width: 600px;
+      padding-bottom: 50px;
+      max-width: 650px;
       margin: 0 auto;
     }
 
-    /* Cabecera Móvil */
     header {
       background: linear-gradient(135deg, #1e40af, #2563eb);
       color: white;
-      padding: 18px 16px;
+      padding: 16px;
       border-radius: var(--radius);
       box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
     header h1 {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     header p {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       opacity: 0.9;
-      margin-top: 2px;
     }
 
-    .badge-pwa {
-      background: rgba(255, 255, 255, 0.2);
-      padding: 4px 8px;
+    .badge-pro {
+      background: rgba(255, 255, 255, 0.25);
+      padding: 4px 10px;
       border-radius: 20px;
       font-size: 0.72rem;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.5px;
+    }
+
+    /* Selector de Motor de Transcripción (IA vs Clásico) */
+    .engine-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .engine-tab {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .engine-tab.active-ai {
+      border-color: var(--ai-purple);
+      background: #f5f3ff;
+      color: var(--ai-purple-dark);
+      font-weight: 700;
+      box-shadow: 0 3px 10px rgba(124, 58, 237, 0.2);
+    }
+
+    .engine-tab.active-classic {
+      border-color: var(--primary);
+      background: #eff6ff;
+      color: var(--primary-dark);
+      font-weight: 700;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, 0.2);
+    }
+
+    .engine-tab h3 {
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+
+    .engine-tab span {
+      font-size: 0.72rem;
+      opacity: 0.85;
     }
 
     /* Tarjetas */
@@ -91,25 +141,25 @@
       padding: 16px;
       border: 1px solid var(--border);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .card-title {
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 700;
       color: var(--text);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    /* Botones de acción táctiles */
+    /* Botones de acción */
     .btn-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 10px;
+      gap: 8px;
+      margin-bottom: 8px;
     }
 
     .btn {
@@ -119,7 +169,7 @@
       gap: 8px;
       padding: 14px 16px;
       border-radius: 12px;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 600;
       cursor: pointer;
       border: none;
@@ -136,6 +186,15 @@
       background: var(--primary);
       color: white;
       box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3);
+      grid-column: span 2;
+      font-size: 1.05rem;
+      padding: 16px;
+    }
+
+    .btn-ai-scan {
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      color: white;
+      box-shadow: 0 3px 12px rgba(124, 58, 237, 0.35);
       grid-column: span 2;
       font-size: 1.05rem;
       padding: 16px;
@@ -166,8 +225,8 @@
     /* Opciones y Selectores */
     .options-row {
       display: flex;
-      gap: 10px;
-      margin-top: 10px;
+      gap: 8px;
+      margin-top: 8px;
     }
 
     .select-group {
@@ -176,76 +235,105 @@
 
     .select-group label {
       display: block;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       font-weight: 600;
     }
 
     .select-control {
       width: 100%;
-      padding: 10px 12px;
+      padding: 9px 10px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: #f8fafc;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       color: var(--text);
       outline: none;
     }
 
-    /* Visor de Imagen / Cámara */
-    #previewContainer {
+    /* Visor y Cropper */
+    #cropperContainer {
       position: relative;
       width: 100%;
       border-radius: 12px;
       overflow: hidden;
       background: #0f172a;
-      min-height: 200px;
+      min-height: 220px;
+      max-height: 380px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-top: 10px;
     }
 
-    #previewImg, #videoLive {
+    #imageToCrop {
       max-width: 100%;
-      max-height: 320px;
-      object-fit: contain;
-      border-radius: 12px;
-    }
-
-    #videoLive {
+      max-height: 380px;
       display: none;
-      width: 100%;
     }
 
     #previewPlaceholder {
       color: #94a3b8;
       font-size: 0.85rem;
       text-align: center;
-      padding: 40px 20px;
+      padding: 50px 20px;
     }
 
-    #btnSnapshotVideo {
+    .crop-actions {
       display: none;
-      position: absolute;
-      bottom: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      color: #0f172a;
-      border: 3px solid var(--primary);
-      border-radius: 30px;
-      padding: 10px 22px;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    /* Configuración de API Key */
+    .api-config-box {
+      background: #faf5ff;
+      border: 1px dashed #d8b4fe;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .api-config-title {
+      font-size: 0.85rem;
       font-weight: 700;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-      z-index: 10;
+      color: var(--ai-purple-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .api-input-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .api-input {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #d8b4fe;
+      font-size: 0.82rem;
+      background: white;
+    }
+
+    .btn-save-key {
+      background: var(--ai-purple);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
     }
 
     /* Barra de Progreso */
     #progressBox {
       display: none;
-      margin-top: 12px;
+      margin-top: 10px;
       background: #eff6ff;
       border: 1px solid #bfdbfe;
       border-radius: 12px;
@@ -280,7 +368,7 @@
     #transcribedText {
       width: 100%;
       min-height: 160px;
-      max-height: 350px;
+      max-height: 380px;
       border-radius: 12px;
       border: 1px solid var(--border);
       padding: 12px;
@@ -305,32 +393,20 @@
       justify-content: space-between;
     }
 
-    /* Historial */
-    .history-item {
-      padding: 10px;
-      border-radius: 10px;
-      background: #f8fafc;
-      border: 1px solid var(--border);
-      margin-bottom: 8px;
-      font-size: 0.82rem;
+    .ai-clean-btn {
+      background: #f3e8ff;
+      color: var(--ai-purple);
+      border: 1px solid #d8b4fe;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    .history-header {
-      font-weight: 600;
-      color: var(--text-muted);
-      font-size: 0.72rem;
-      margin-bottom: 4px;
-    }
-
-    .history-preview {
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Input oculto */
     input[type="file"] {
       display: none;
     }
@@ -338,73 +414,105 @@
 </head>
 <body>
 
-  <!-- Cabecera -->
   <header>
     <div>
-      <h1>📸 Transcriptor OCR</h1>
-      <p>Cámara Móvil a Excel & Notas</p>
+      <h1>📸 Transcriptor OCR Pro</h1>
+      <p>Cámara Móvil con IA & Tesseract</p>
     </div>
-    <span class="badge-pwa">ANDROID PWA</span>
+    <span class="badge-pro">PRECISIÓN ALTA</span>
   </header>
 
-  <!-- Panel 1: Captura de Foto -->
+  <!-- Pestañas de Selección de Motor -->
+  <div class="engine-selector">
+    <div class="engine-tab active-ai" id="tabAI">
+      <h3>🌟 Motor IA (Gemini)</h3>
+      <span>Letra a mano, tickets & máxima precisión</span>
+    </div>
+    <div class="engine-tab" id="tabClassic">
+      <h3>⚡ Tesseract Clásico</h3>
+      <span>100% Offline (Sin internet)</span>
+    </div>
+  </div>
+
+  <!-- Configuración de API Key de Gemini (Opcional pero potente) -->
+  <div class="api-config-box" id="apiConfigBox">
+    <div class="api-config-title">
+      <span>🔑 Modo IA: Clave gratuita de Google Gemini</span>
+      <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--ai-purple); font-size:0.75rem; text-decoration:underline;">
+        Obtener Gratis (30 seg)
+      </a>
+    </div>
+    <div class="api-input-row">
+      <input type="password" id="geminiApiKey" class="api-input" placeholder="Pega tu API Key de Gemini aquí">
+      <button class="btn-save-key" id="btnSaveKey">Guardar</button>
+    </div>
+    <p style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
+      💡 Se almacena únicamente en tu celular. Permite leer texto manuscrito y fotos difíciles con 99.9% de precisión.
+    </p>
+  </div>
+
+  <!-- Tarjeta de Captura de Foto -->
   <div class="card">
     <div class="card-title">
       <span>1. Tomar o Cargar Foto</span>
     </div>
 
-    <!-- Inputs ocultos para cámara y galería -->
+    <!-- Inputs ocultos -->
     <input type="file" id="cameraInput" accept="image/*" capture="environment">
     <input type="file" id="galleryInput" accept="image/*">
 
     <div class="btn-grid">
-      <!-- Botón principal: abre la cámara nativa de Android con autofocus y flash -->
-      <button class="btn btn-primary" id="btnCamera">
+      <button class="btn btn-ai-scan" id="btnCamera">
         📸 TOMAR FOTO CON CÁMARA
       </button>
-
-      <button class="btn btn-secondary" id="btnLiveView">
-        📹 Cámara en Vivo
-      </button>
-      <button class="btn btn-secondary" id="btnGallery">
-        🖼️ Galería / Archivo
+      <button class="btn btn-secondary" id="btnGallery" style="grid-column: span 2;">
+        🖼️ Elegir Foto de la Galería
       </button>
     </div>
 
-    <!-- Opciones de OCR -->
-    <div class="options-row">
+    <!-- Opciones de Imagen / Recorte -->
+    <div class="options-row" id="classicOptionsRow" style="display: none;">
       <div class="select-group">
-        <label for="langSelect">Idioma OCR</label>
-        <select id="langSelect" class="select-control">
-          <option value="spa+eng" selected>Español + Inglés</option>
-          <option value="spa">Solo Español</option>
-          <option value="eng">Solo Inglés</option>
+        <label>Modo de Texto</label>
+        <select id="psmSelect" class="select-control">
+          <option value="6" selected>Párrafo / Documento</option>
+          <option value="3">Página Completa</option>
+          <option value="4">Ticket / Varias Columnas</option>
+          <option value="7">Línea Única</option>
         </select>
       </div>
       <div class="select-group">
-        <label for="filterSelect">Filtro de Imagen</label>
+        <label>Filtro de Contraste</label>
         <select id="filterSelect" class="select-control">
-          <option value="auto" selected>Auto-Contraste</option>
-          <option value="binarize">Blanco y Negro (Texto)</option>
+          <option value="otsu" selected>Otsu Dinámico (Texto Nítido)</option>
+          <option value="sharpen">Enfoque + Nitidez</option>
           <option value="none">Original (Sin filtro)</option>
         </select>
       </div>
     </div>
 
-    <!-- Contenedor de Vista Previa -->
-    <div id="previewContainer">
-      <video id="videoLive" autoplay playsinline></video>
-      <button id="btnSnapshotVideo" class="btn">📸 Disparar Ahora</button>
-      <img id="previewImg" style="display: none;" alt="Foto capturada">
+    <!-- Contenedor con Visor y Recortador (Cropper) -->
+    <div id="cropperContainer">
+      <img id="imageToCrop" alt="Foto para recortar">
       <div id="previewPlaceholder">
-        Apunta un documento o texto y pulsa<br><strong>"Tomar Foto con Cámara"</strong>
+        Apunta a tu documento o texto y pulsa<br><strong>"TOMAR FOTO CON CÁMARA"</strong>
       </div>
     </div>
 
-    <!-- Barra de progreso OCR -->
+    <!-- Botones de Recorte y Procesamiento -->
+    <div class="crop-actions" id="cropActions">
+      <button class="btn btn-ai-scan" id="btnCropAndScan" style="flex: 2;">
+        ✂️ Recortar y Transcribir
+      </button>
+      <button class="btn btn-secondary" id="btnScanFull" style="flex: 1;">
+        ⏩ Toda la Foto
+      </button>
+    </div>
+
+    <!-- Barra de progreso -->
     <div id="progressBox">
       <div id="progressText">
-        <span id="progressStatus">Preparando OCR...</span>
+        <span id="progressStatus">Procesando texto...</span>
         <span id="progressPercent">0%</span>
       </div>
       <div class="progress-bar-bg">
@@ -413,16 +521,21 @@
     </div>
   </div>
 
-  <!-- Panel 2: Texto Transcrito y Edición -->
+  <!-- Tarjeta de Texto Transcrito -->
   <div class="card">
     <div class="card-title">
-      <span>2. Texto Transcrito (Editable)</span>
-      <button id="btnClear" style="background: none; border: none; color: #ef4444; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
-        🗑️ Limpiar
-      </button>
+      <span>2. Texto Transcrito</span>
+      <div style="display:flex; gap:6px;">
+        <button id="btnAiRefine" class="ai-clean-btn">
+          ✨ Mejorar con IA
+        </button>
+        <button id="btnClear" style="background:none; border:none; color:#ef4444; font-size:0.8rem; font-weight:600; cursor:pointer;">
+          🗑️ Limpiar
+        </button>
+      </div>
     </div>
 
-    <textarea id="transcribedText" placeholder="El texto transcrito aparecerá aquí. Podrás editarlo o corregirlo antes de guardarlo."></textarea>
+    <textarea id="transcribedText" placeholder="El texto transcrito aparecerá aquí listo para editar, copiar o exportar."></textarea>
 
     <div class="text-stats">
       <span id="statsWords">0 palabras</span>
@@ -431,7 +544,7 @@
     </div>
   </div>
 
-  <!-- Panel 3: Guardar y Exportar -->
+  <!-- Tarjeta de Exportación -->
   <div class="card">
     <div class="card-title">
       <span>3. Guardar y Exportar</span>
@@ -453,28 +566,27 @@
     </div>
   </div>
 
-  <!-- Panel 4: Historial Reciente en este Teléfono -->
-  <div class="card">
-    <div class="card-title">
-      <span>📚 Escaneos Recientes</span>
-      <button id="btnClearHistory" style="background:none; border:none; color:var(--text-muted); font-size: 0.75rem; cursor:pointer;">Borrar historial</button>
-    </div>
-    <div id="historyList">
-      <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 10px;">Aún no tienes lecturas guardadas.</p>
-    </div>
-  </div>
-
   <script>
+    // Variables de Estado
+    let currentEngine = "ai"; // 'ai' o 'classic'
+    let cropperInstance = null;
+    let rawImageDataUrl = null;
+
     // Referencias DOM
+    const tabAI = document.getElementById("tabAI");
+    const tabClassic = document.getElementById("tabClassic");
+    const apiConfigBox = document.getElementById("apiConfigBox");
+    const geminiApiKey = document.getElementById("geminiApiKey");
+    const btnSaveKey = document.getElementById("btnSaveKey");
     const cameraInput = document.getElementById("cameraInput");
     const galleryInput = document.getElementById("galleryInput");
     const btnCamera = document.getElementById("btnCamera");
     const btnGallery = document.getElementById("btnGallery");
-    const btnLiveView = document.getElementById("btnLiveView");
-    const btnSnapshotVideo = document.getElementById("btnSnapshotVideo");
-    const videoLive = document.getElementById("videoLive");
-    const previewImg = document.getElementById("previewImg");
+    const imageToCrop = document.getElementById("imageToCrop");
     const previewPlaceholder = document.getElementById("previewPlaceholder");
+    const cropActions = document.getElementById("cropActions");
+    const btnCropAndScan = document.getElementById("btnCropAndScan");
+    const btnScanFull = document.getElementById("btnScanFull");
     const progressBox = document.getElementById("progressBox");
     const progressStatus = document.getElementById("progressStatus");
     const progressPercent = document.getElementById("progressPercent");
@@ -483,107 +595,229 @@
     const statsWords = document.getElementById("statsWords");
     const statsChars = document.getElementById("statsChars");
     const statsLines = document.getElementById("statsLines");
-    const langSelect = document.getElementById("langSelect");
+    const classicOptionsRow = document.getElementById("classicOptionsRow");
     const filterSelect = document.getElementById("filterSelect");
+    const psmSelect = document.getElementById("psmSelect");
     const btnExportExcel = document.getElementById("btnExportExcel");
     const btnExportNotes = document.getElementById("btnExportNotes");
     const btnCopyText = document.getElementById("btnCopyText");
     const btnShareNative = document.getElementById("btnShareNative");
     const btnClear = document.getElementById("btnClear");
-    const historyList = document.getElementById("historyList");
-    const btnClearHistory = document.getElementById("btnClearHistory");
+    const btnAiRefine = document.getElementById("btnAiRefine");
 
-    let liveStream = null;
-    let currentImageBlob = null;
+    // Cargar API Key guardada
+    const savedKey = localStorage.getItem("gemini_api_key") || "";
+    if (savedKey) {
+      geminiApiKey.value = savedKey;
+    }
 
-    // Disparadores de captura
-    btnCamera.addEventListener("click", () => {
-      stopLiveStream();
-      cameraInput.click();
+    btnSaveKey.addEventListener("click", () => {
+      const val = geminiApiKey.value.trim();
+      if (!val) {
+        localStorage.removeItem("gemini_api_key");
+        alert("API Key eliminada.");
+      } else {
+        localStorage.setItem("gemini_api_key", val);
+        alert("¡API Key guardada con éxito en tu teléfono!");
+      }
     });
 
-    btnGallery.addEventListener("click", () => {
-      stopLiveStream();
-      galleryInput.click();
+    // Alternar Motor (IA vs Clásico)
+    tabAI.addEventListener("click", () => {
+      currentEngine = "ai";
+      tabAI.className = "engine-tab active-ai";
+      tabClassic.className = "engine-tab";
+      apiConfigBox.style.display = "block";
+      classicOptionsRow.style.display = "none";
+      btnCamera.className = "btn btn-ai-scan";
+      btnCropAndScan.className = "btn btn-ai-scan";
+      btnCropAndScan.innerHTML = "✂️ Recortar y Transcribir con IA";
     });
+
+    tabClassic.addEventListener("click", () => {
+      currentEngine = "classic";
+      tabClassic.className = "engine-tab active-classic";
+      tabAI.className = "engine-tab";
+      apiConfigBox.style.display = "none";
+      classicOptionsRow.style.display = "flex";
+      btnCamera.className = "btn btn-primary";
+      btnCropAndScan.className = "btn btn-primary";
+      btnCropAndScan.innerHTML = "✂️ Recortar y Transcribir Offline";
+    });
+
+    // Disparadores de Captura
+    btnCamera.addEventListener("click", () => cameraInput.click());
+    btnGallery.addEventListener("click", () => galleryInput.click());
 
     cameraInput.addEventListener("change", handleFileChosen);
     galleryInput.addEventListener("change", handleFileChosen);
 
-    // Manejador cuando el usuario toma una foto o elige una imagen
     function handleFileChosen(e) {
       const file = e.target.files[0];
       if (!file) return;
 
-      currentImageBlob = file;
       const reader = new FileReader();
       reader.onload = (event) => {
-        showPreviewImage(event.target.result);
-        processOCR(event.target.result);
+        rawImageDataUrl = event.target.result;
+        initCropper(rawImageDataUrl);
       };
       reader.readAsDataURL(file);
     }
 
-    function showPreviewImage(dataUrl) {
-      videoLive.style.display = "none";
-      btnSnapshotVideo.style.display = "none";
+    // Inicializar Recortador Táctil (Cropper)
+    function initCropper(dataUrl) {
       previewPlaceholder.style.display = "none";
-      previewImg.src = dataUrl;
-      previewImg.style.display = "block";
+      imageToCrop.src = dataUrl;
+      imageToCrop.style.display = "block";
+      cropActions.style.display = "flex";
+
+      if (cropperInstance) {
+        cropperInstance.destroy();
+      }
+
+      cropperInstance = new Cropper(imageToCrop, {
+        viewMode: 1,
+        autoCropArea: 0.9,
+        responsive: true,
+        movable: true,
+        rotatable: true,
+        scalable: true,
+        zoomable: true
+      });
+
+      // Scroll hacia la vista de recorte
+      document.getElementById("cropperContainer").scrollIntoView({ behavior: "smooth" });
     }
 
-    // Modo de Cámara en Vivo con WebRTC
-    btnLiveView.addEventListener("click", async () => {
-      if (liveStream) {
-        stopLiveStream();
+    // Botones de Ejecución de OCR
+    btnCropAndScan.addEventListener("click", () => {
+      if (!cropperInstance) return;
+      const croppedCanvas = cropperInstance.getCroppedCanvas({
+        maxWidth: 2400,
+        maxHeight: 2400
+      });
+      const croppedDataUrl = croppedCanvas.toDataURL("image/jpeg", 0.92);
+      runTranscription(croppedDataUrl);
+    });
+
+    btnScanFull.addEventListener("click", () => {
+      if (!rawImageDataUrl) return;
+      runTranscription(rawImageDataUrl);
+    });
+
+    async function runTranscription(imgUrl) {
+      if (currentEngine === "ai") {
+        await runGeminiOCR(imgUrl);
+      } else {
+        await runTesseractOCR(imgUrl);
+      }
+    }
+
+    // ----------------- MOTOR IA (Gemini Vision) -----------------
+    async function runGeminiOCR(imgUrl) {
+      const apiKey = geminiApiKey.value.trim();
+      if (!apiKey) {
+        const ask = confirm("Para usar el Modo IA con máxima precisión (letra manuscrita, recibos, etc.), necesitas ingresar tu clave gratuita de Google Gemini.\n\n¿Deseas abrir la página gratuita de Google para obtenerla en 30 segundos?");
+        if (ask) {
+          window.open("https://aistudio.google.com/app/apikey", "_blank");
+        } else {
+          // Cambiar a clásico
+          tabClassic.click();
+          runTesseractOCR(imgUrl);
+        }
         return;
       }
+
+      showProgress("Conectando con IA de Gemini...", 20);
+
       try {
-        const constraints = {
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          }
-        };
-        liveStream = await navigator.mediaDevices.getUserMedia(constraints);
-        videoLive.srcObject = liveStream;
-        videoLive.style.display = "block";
-        btnSnapshotVideo.style.display = "block";
-        previewImg.style.display = "none";
-        previewPlaceholder.style.display = "none";
-        btnLiveView.textContent = "🛑 Detener Cámara";
+        const base64Data = imgUrl.split(",")[1];
+        showProgress("Analizando imagen con Inteligencia Artificial...", 50);
+
+        const prompt = "Transcribe con máxima precisión y fidelidad absolutamente TODO el texto visible en esta imagen (incluyendo texto manuscrito a mano, números, tickets, fechas, totales, firmas o listas). Mantén la estructura y saltos de línea para que se pueda exportar a Excel. Devuelve únicamente el texto transcrito sin explicaciones ni introducciones.";
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: "image/jpeg",
+                    data: base64Data
+                  }
+                }
+              ]
+            }]
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error?.message || "Error en la solicitud de IA");
+        }
+
+        const data = await response.json();
+        const extracted = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+        showProgress("¡Listo!", 100);
+        setTimeout(hideProgress, 800);
+
+        insertTranscribedText(extracted.trim(), "IA Gemini");
+
       } catch (err) {
-        alert("No se pudo iniciar la cámara en vivo del navegador. Usa el botón 'TOMAR FOTO CON CÁMARA' que abre la app nativa de tu teléfono.");
-      }
-    });
-
-    btnSnapshotVideo.addEventListener("click", () => {
-      if (!liveStream) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = videoLive.videoWidth || 1280;
-      canvas.height = videoLive.videoHeight || 720;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(videoLive, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
-      stopLiveStream();
-      showPreviewImage(dataUrl);
-      processOCR(dataUrl);
-    });
-
-    function stopLiveStream() {
-      if (liveStream) {
-        liveStream.getTracks().forEach(t => t.stop());
-        liveStream = null;
-        videoLive.style.display = "none";
-        btnSnapshotVideo.style.display = "none";
-        btnLiveView.textContent = "📹 Cámara en Vivo";
+        hideProgress();
+        alert("Error en Modo IA: " + err.message + "\n\nCambiando a Modo Offline Tesseract...");
+        runTesseractOCR(imgUrl);
       }
     }
 
-    // Preprocesamiento de imagen en Canvas
-    async function preprocessImage(imageDataUrl, filterMode) {
-      if (filterMode === "none") return imageDataUrl;
+    // ----------------- MOTOR CLÁSICO OFFLINE (Tesseract Mejorado) -----------------
+    async function runTesseractOCR(imgUrl) {
+      showProgress("Optimizando filtros de imagen (Otsu & Nitidez)...", 15);
+
+      try {
+        const filter = filterSelect.value;
+        const processedUrl = await applyEnhancedFilters(imgUrl, filter);
+        const psm = parseInt(psmSelect.value, 10) || 6;
+
+        showProgress("Iniciando motor Tesseract...", 30);
+
+        const result = await Tesseract.recognize(
+          processedUrl,
+          "spa+eng",
+          {
+            logger: (m) => {
+              if (m.status === "recognizing text") {
+                const pct = Math.round(30 + (m.progress || 0) * 65);
+                showProgress(`Reconociendo texto: ${Math.round((m.progress || 0) * 100)}%`, pct);
+              }
+            }
+          }
+        );
+
+        const text = (result.data.text || "").trim();
+        showProgress("¡Completado!", 100);
+        setTimeout(hideProgress, 800);
+
+        if (!text) {
+          alert("No se detectó texto legible. Prueba usar el 'Modo IA' o recortar más cerca del texto.");
+          return;
+        }
+
+        insertTranscribedText(text, "Tesseract Offline");
+
+      } catch (err) {
+        hideProgress();
+        alert("Error en Tesseract: " + err.message);
+      }
+    }
+
+    // Filtros de Imagen Avanzados (Otsu Dinámico y Convolución de Enfoque)
+    function applyEnhancedFilters(dataUrl, filterType) {
+      if (filterType === "none") return Promise.resolve(dataUrl);
 
       return new Promise((resolve) => {
         const img = new Image();
@@ -596,108 +830,129 @@
 
           const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const d = imgData.data;
+          const len = d.length;
 
-          if (filterMode === "binarize") {
-            // Conversión Binarizada (Blanco y Negro para texto)
-            for (let i = 0; i < d.length; i += 4) {
-              const v = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-              const thresh = v > 135 ? 255 : 0;
-              d[i] = thresh;
-              d[i+1] = thresh;
-              d[i+2] = thresh;
+          // 1. Escala de grises y cálculo de histograma
+          const hist = new Array(256).fill(0);
+          const totalPixels = len / 4;
+
+          for (let i = 0; i < len; i += 4) {
+            const gray = Math.round(0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]);
+            d[i] = gray;
+            hist[gray]++;
+          }
+
+          if (filterType === "otsu") {
+            // Algoritmo de Umbralización de Otsu (Cálculo de varianza entre clases)
+            let sum = 0;
+            for (let i = 0; i < 256; i++) sum += i * hist[i];
+
+            let sumB = 0;
+            let wB = 0;
+            let wF = 0;
+            let maxVariance = 0;
+            let otsuThreshold = 128;
+
+            for (let t = 0; t < 256; t++) {
+              wB += hist[t];
+              if (wB === 0) continue;
+              wF = totalPixels - wB;
+              if (wF === 0) break;
+
+              sumB += t * hist[t];
+              const mB = sumB / wB;
+              const mF = (sum - sumB) / wF;
+              const variance = wB * wF * (mB - mF) * (mB - mF);
+
+              if (variance > maxVariance) {
+                maxVariance = variance;
+                otsuThreshold = t;
+              }
             }
-          } else if (filterMode === "auto") {
-            // Auto-contraste y escala de grises
-            for (let i = 0; i < d.length; i += 4) {
-              const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-              // Contraste sigmoideo
-              const enhanced = Math.min(255, Math.max(0, (gray - 128) * 1.35 + 128));
-              d[i] = enhanced;
-              d[i+1] = enhanced;
-              d[i+2] = enhanced;
+
+            // Aplicar binarización limpia
+            for (let i = 0; i < len; i += 4) {
+              const val = d[i] > otsuThreshold ? 255 : 0;
+              d[i] = val;
+              d[i+1] = val;
+              d[i+2] = val;
+            }
+          } else if (filterType === "sharpen") {
+            // Estiramiento de Contraste Dinámico
+            let minVal = 255, maxVal = 0;
+            for (let i = 0; i < len; i += 4) {
+              if (d[i] < minVal) minVal = d[i];
+              if (d[i] > maxVal) maxVal = d[i];
+            }
+            const range = Math.max(1, maxVal - minVal);
+            for (let i = 0; i < len; i += 4) {
+              const stretched = Math.round(((d[i] - minVal) / range) * 255);
+              d[i] = stretched;
+              d[i+1] = stretched;
+              d[i+2] = stretched;
             }
           }
 
           ctx.putImageData(imgData, 0, 0);
           resolve(canvas.toDataURL("image/jpeg", 0.95));
         };
-        img.src = imageDataUrl;
+        img.src = dataUrl;
       });
     }
 
-    // Proceso OCR con Tesseract.js en el cliente
-    async function processOCR(dataUrl) {
-      progressBox.style.display = "block";
-      progressBar.style.width = "5%";
-      progressPercent.textContent = "5%";
-      progressStatus.textContent = "Preparando imagen y filtros...";
+    // Mejorar texto actual con IA (limpiar errores y organizar tabla)
+    btnAiRefine.addEventListener("click", async () => {
+      const current = transcribedText.value.trim();
+      if (!current) {
+        alert("Primero toma una foto o escribe texto para mejorar.");
+        return;
+      }
+      const apiKey = geminiApiKey.value.trim();
+      if (!apiKey) {
+        alert("Ingresa tu clave de Gemini en la parte superior para usar esta función.");
+        return;
+      }
 
+      showProgress("Limpiando y corrigiendo con IA...", 40);
       try {
-        const filter = filterSelect.value;
-        const processedUrl = await preprocessImage(dataUrl, filter);
-        const lang = langSelect.value;
-
-        progressStatus.textContent = "Cargando motor OCR Tesseract...";
-
-        const result = await Tesseract.recognize(
-          processedUrl,
-          lang,
-          {
-            logger: (m) => {
-              if (m.status === "recognizing text") {
-                const pct = Math.round((m.progress || 0) * 100);
-                progressBar.style.width = `${pct}%`;
-                progressPercent.textContent = `${pct}%`;
-                progressStatus.textContent = `Reconociendo texto: ${pct}%`;
-              } else if (m.status === "loading tesseract core") {
-                progressStatus.textContent = "Cargando núcleo OCR...";
-              } else if (m.status === "loading language traineddata") {
-                progressStatus.textContent = `Descargando idioma (${lang})...`;
-              }
-            }
-          }
-        );
-
-        const text = (result.data.text || "").trim();
-        progressBar.style.width = "100%";
-        progressPercent.textContent = "100%";
-        progressStatus.textContent = "¡Transcripción completada!";
-
-        setTimeout(() => {
-          progressBox.style.display = "none";
-        }, 1200);
-
-        if (!text) {
-          alert("No se detectó texto con suficiente nitidez. Prueba acercar más la cámara o activar el filtro 'Blanco y Negro'.");
-          return;
+        const prompt = `Corrige la ortografía, une líneas cortadas por el OCR y organiza los datos en filas ordenadas para Excel del siguiente texto transcrito. Devuelve solo el texto corregido y limpio:\n\n${current}`;
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+        const data = await resp.json();
+        const refined = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        hideProgress();
+        if (refined) {
+          transcribedText.value = refined.trim();
+          updateStats();
+          alert("✨ ¡Texto perfeccionado con IA con éxito!");
         }
+      } catch (e) {
+        hideProgress();
+        alert("Error al mejorar con IA: " + e.message);
+      }
+    });
 
-        // Anexar o reemplazar
-        const prev = transcribedText.value.trim();
-        if (prev) {
-          if (confirm("¿Deseas AÑADIR este nuevo texto al final del texto actual?")) {
-            transcribedText.value = prev + "\n\n--- Nueva Foto ---\n" + text;
-          } else {
-            transcribedText.value = text;
-          }
+    // Inserción y Estadísticas
+    function insertTranscribedText(text, sourceLabel) {
+      const prev = transcribedText.value.trim();
+      if (prev) {
+        if (confirm(`¿Deseas AÑADIR este texto al final del anterior?\n\n(Pulsa 'Cancelar' para reemplazar)`)) {
+          transcribedText.value = prev + `\n\n--- Transcripción (${sourceLabel}) ---\n` + text;
         } else {
           transcribedText.value = text;
         }
-
-        updateStats();
-        saveToHistory(text);
-
-        // Scroll al editor
-        transcribedText.scrollIntoView({ behavior: "smooth" });
-
-      } catch (err) {
-        console.error(err);
-        progressBox.style.display = "none";
-        alert("Error durante el OCR: " + err.message);
+      } else {
+        transcribedText.value = text;
       }
+      updateStats();
+      transcribedText.scrollIntoView({ behavior: "smooth" });
     }
 
-    // Estadísticas en tiempo real
     function updateStats() {
       const txt = transcribedText.value.trim();
       const words = txt ? txt.split(/\s+/).filter(Boolean).length : 0;
@@ -711,11 +966,11 @@
 
     transcribedText.addEventListener("input", updateStats);
 
-    // Exportar a Excel (.xlsx) usando SheetJS
+    // Exportación a Excel (.xlsx) con SheetJS
     btnExportExcel.addEventListener("click", () => {
       const text = transcribedText.value.trim();
       if (!text) {
-        alert("No hay texto para exportar a Excel.");
+        alert("No hay texto para exportar.");
         return;
       }
 
@@ -723,50 +978,48 @@
       const nowStr = new Date().toLocaleString("es-ES");
 
       const rows = [
-        ["#", "Texto Transcrito", "Fecha y Hora", "Dispositivo"]
+        ["#", "Texto Transcrito", "Fecha y Hora", "Método"]
       ];
 
       lines.forEach((line, idx) => {
-        rows.push([idx + 1, line.trim(), nowStr, "Móvil Android"]);
+        rows.push([idx + 1, line.trim(), nowStr, currentEngine === "ai" ? "Modo IA" : "Modo Offline"]);
       });
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(rows);
 
-      // Anchos de columna sugeridos
       ws["!cols"] = [
         { wch: 6 },
-        { wch: 50 },
+        { wch: 60 },
         { wch: 22 },
         { wch: 16 }
       ];
 
       XLSX.utils.book_append_sheet(wb, ws, "Transcripciones");
       const dateName = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `transcripcion_movil_${dateName}.xlsx`);
+      XLSX.writeFile(wb, `transcripcion_${dateName}.xlsx`);
     });
 
-    // Exportar a Notas (.txt)
+    // Exportación a Notas (.txt)
     btnExportNotes.addEventListener("click", () => {
       const text = transcribedText.value.trim();
       if (!text) {
         alert("No hay texto para guardar.");
         return;
       }
-
       const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const dateName = new Date().toISOString().slice(0, 10);
       a.href = url;
-      a.download = `notas_transcripcion_${dateName}.txt`;
+      a.download = `notas_${dateName}.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     });
 
-    // Copiar al Portapapeles
+    // Copiar Texto
     btnCopyText.addEventListener("click", async () => {
       const text = transcribedText.value.trim();
       if (!text) {
@@ -775,42 +1028,36 @@
       }
       try {
         await navigator.clipboard.writeText(text);
-        const originalText = btnCopyText.textContent;
+        const prev = btnCopyText.textContent;
         btnCopyText.textContent = "✅ ¡Copiado!";
-        setTimeout(() => { btnCopyText.textContent = originalText; }, 2000);
-      } catch (err) {
-        // Fallback para navegadores antiguos
+        setTimeout(() => { btnCopyText.textContent = prev; }, 2000);
+      } catch (e) {
         transcribedText.select();
         document.execCommand("copy");
         alert("Texto copiado al portapapeles.");
       }
     });
 
-    // Compartir mediante Web Share API nativa de Android
+    // Compartir Nativo de Android
     btnShareNative.addEventListener("click", async () => {
       const text = transcribedText.value.trim();
       if (!text) {
         alert("No hay texto para compartir.");
         return;
       }
-
       if (navigator.share) {
         try {
           await navigator.share({
             title: "Texto Transcrito OCR",
             text: text
           });
-        } catch (err) {
-          if (err.name !== "AbortError") {
-            alert("No se pudo compartir: " + err.message);
-          }
-        }
+        } catch (e) {}
       } else {
-        alert("La función de compartir no está disponible en este navegador. Puedes usar el botón 'Copiar Texto'.");
+        alert("Tu navegador no soporta compartir nativo. Puedes usar 'Copiar Texto'.");
       }
     });
 
-    // Limpiar editor
+    // Limpiar
     btnClear.addEventListener("click", () => {
       if (transcribedText.value && confirm("¿Deseas borrar todo el texto actual?")) {
         transcribedText.value = "";
@@ -818,75 +1065,19 @@
       }
     });
 
-    // Gestión del Historial Local
-    function loadHistory() {
-      const stored = localStorage.getItem("ocr_history");
-      if (!stored) {
-        historyList.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 10px;">Aún no tienes lecturas guardadas.</p>';
-        return;
-      }
-      try {
-        const items = JSON.parse(stored);
-        if (items.length === 0) {
-          historyList.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 10px;">Aún no tienes lecturas guardadas.</p>';
-          return;
-        }
-        historyList.innerHTML = items.map((it, idx) => `
-          <div class="history-item" onclick="loadHistoryItem(${idx})">
-            <div class="history-header">📅 ${it.date} (${it.words} palabras)</div>
-            <div class="history-preview">${escapeHtml(it.text)}</div>
-          </div>
-        `).join("");
-      } catch (e) {
-        console.error(e);
-      }
+    // Utilidades de Progreso
+    function showProgress(msg, pct) {
+      progressBox.style.display = "block";
+      progressStatus.textContent = msg;
+      progressPercent.textContent = `${pct}%`;
+      progressBar.style.width = `${pct}%`;
     }
 
-    function saveToHistory(text) {
-      let items = [];
-      try {
-        items = JSON.parse(localStorage.getItem("ocr_history") || "[]");
-      } catch (e) { items = []; }
-
-      const words = text.split(/\s+/).filter(Boolean).length;
-      items.unshift({
-        date: new Date().toLocaleString("es-ES"),
-        text: text,
-        words: words
-      });
-
-      // Guardar máximo 15 elementos
-      items = items.slice(0, 15);
-      localStorage.setItem("ocr_history", JSON.stringify(items));
-      loadHistory();
+    function hideProgress() {
+      progressBox.style.display = "none";
     }
 
-    window.loadHistoryItem = function(idx) {
-      try {
-        const items = JSON.parse(localStorage.getItem("ocr_history") || "[]");
-        if (items[idx]) {
-          transcribedText.value = items[idx].text;
-          updateStats();
-          transcribedText.scrollIntoView({ behavior: "smooth" });
-        }
-      } catch (e) {}
-    };
-
-    btnClearHistory.addEventListener("click", () => {
-      if (confirm("¿Deseas vaciar el historial guardado en este teléfono?")) {
-        localStorage.removeItem("ocr_history");
-        loadHistory();
-      }
-    });
-
-    function escapeHtml(str) {
-      return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    // Inicializar historial al cargar
-    loadHistory();
-
-    // Registro de Service Worker para soporte PWA Offline
+    // Registro Service Worker
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js").catch(() => {});
