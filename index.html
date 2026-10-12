@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Transcriptor OCR Móvil</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
+
+  <!-- Tesseract.js para OCR en el navegador (offline y móvil) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- SheetJS para generar archivos Excel (.xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --success-dark: #15803d;
+      --amber: #d97706;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 12px;
+      padding-bottom: 40px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Cabecera Móvil */
+    header {
+      background: linear-gradient(135deg, #1e40af, #2563eb);
+      color: white;
+      padding: 18px 16px;
+      border-radius: var(--radius);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    header p {
+      font-size: 0.8rem;
+      opacity: 0.9;
+      margin-top: 2px;
+    }
+
+    .badge-pwa {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* Tarjetas */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Botones de acción táctiles */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      text-align: center;
+      width: 100%;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3);
+      grid-column: span 2;
+      font-size: 1.05rem;
+      padding: 16px;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .btn-excel {
+      background: var(--success);
+      color: white;
+      box-shadow: 0 3px 10px rgba(22, 163, 74, 0.25);
+    }
+
+    .btn-notes {
+      background: var(--amber);
+      color: white;
+      box-shadow: 0 3px 10px rgba(217, 119, 6, 0.25);
+    }
+
+    .btn-share {
+      background: #475569;
+      color: white;
+    }
+
+    /* Opciones y Selectores */
+    .options-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .select-group {
+      flex: 1;
+    }
+
+    .select-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .select-control {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      font-size: 0.85rem;
+      color: var(--text);
+      outline: none;
+    }
+
+    /* Visor de Imagen / Cámara */
+    #previewContainer {
+      position: relative;
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #0f172a;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    #previewImg, #videoLive {
+      max-width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      border-radius: 12px;
+    }
+
+    #videoLive {
+      display: none;
+      width: 100%;
+    }
+
+    #previewPlaceholder {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    #btnSnapshotVideo {
+      display: none;
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      color: #0f172a;
+      border: 3px solid var(--primary);
+      border-radius: 30px;
+      padding: 10px 22px;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+
+    /* Barra de Progreso */
+    #progressBox {
+      display: none;
+      margin-top: 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: #dbeafe;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .progress-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--primary);
+      transition: width 0.2s ease;
+    }
+
+    #progressText {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--primary-dark);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Editor de Texto */
+    #transcribedText {
+      width: 100%;
+      min-height: 160px;
+      max-height: 350px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 12px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: #fafafa;
+      resize: vertical;
+      outline: none;
+    }
+
+    #transcribedText:focus {
+      border-color: var(--primary);
+      background: white;
+    }
+
+    .text-stats {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Historial */
+    .history-item {
+      padding: 10px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .history-header {
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      margin-bottom: 4px;
+    }
+
+    .history-preview {
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Input oculto */
+    input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cabecera -->
+  <header>
+    <div>
+      <h1>📸 Transcriptor OCR</h1>
+      <p>Cámara Móvil a Excel & Notas</p>
+    </div>
+    <span class="badge-pwa">ANDROID PWA</span>
+  </header>
+
+  <!-- Panel 1: Captura de Foto -->
+  <div class="card">
+    <div class="card-title">
+      <span>1. Tomar o Cargar Foto</span>
+    </div>
+
+    <!-- Inputs ocultos para cámara y galería -->
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+    <input type="file" id="galleryInput" accept="image/*">
+
+    <div class="btn-grid">
+      <!-- Botón principal: abre la cámara nativa de Android con autofocus y flash -->
+      <button class="btn btn-primary" id="btnCamera">
+        📸 TOMAR FOTO CON CÁMARA
+      </button>
+
+      <button class="btn btn-secondary" id="btnLiveView">
+        📹 Cámara en Vivo
+      </button>
+      <button class="btn btn-secondary" id="btnGallery">
+        🖼️ Galería / Archivo
+      </button>
+    </div>
+
+    <!-- Opciones de OCR -->
+    <div class="options-row">
+      <div class="select-group">
+        <label for="langSelect">Idioma OCR</label>
+        <select id="langSelect" class="select-control">
+          <option value="spa+eng" selected>Español + Inglés</option>
+          <option value="spa">Solo Español</option>
+          <option value="eng">Solo Inglés</option>
+        </select>
+      </div>
+      <div class="select-group">
+        <label for="filterSelect">Filtro de Imagen</label>
+        <select id="filterSelect" class="select-control">
+          <option value="auto" selected>Auto-Contraste</option>
+          <option value="binarize">Blanco y Negro (Texto)</option>
+          <option value="none">Original (Sin filtro)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Contenedor de Vista Previa -->
+    <div id="previewContainer">
+      <video id="videoLive" autoplay playsinline></video>
+      <button id="btnSnapshotVideo" class="btn">📸 Disparar Ahora</button>
+      <img id="previewImg" style="display: none;" alt="Foto capturada">
+      <div id="previewPlaceholder">
+        Apunta un documento o texto y pulsa<br><strong>"Tomar Foto con Cámara"</strong>
+      </div>
+    </div>
+
+    <!-- Barra de progreso OCR -->
+    <div id="progressBox">
+      <div id="progressText">
+        <span id="progressStatus">Preparando OCR...</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel 2: Texto Transcrito y Edición -->
+  <div class="card">
+    <div class="card-title">
+      <span>2. Texto Transcrito (Editable)</span>
+      <button id="btnClear" style="background: none; border: none; color: #ef4444; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+        🗑️ Limpiar
+      </button>
+    </div>
+
+    <textarea id="transcribedText" placeholder="El texto transcrito aparecerá aquí. Podrás editarlo o corregirlo antes de guardarlo."></textarea>
+
+    <div class="text-stats">
+      <span id="statsWords">0 palabras</span>
+      <span id="statsChars">0 caracteres</span>
+      <span id="statsLines">0 líneas</span>
+    </div>
+  </div>
+
+  <!-- Panel 3: Guardar y Exportar -->
+  <div class="card">
+    <div class="card-title">
+      <span>3. Guardar y Exportar</span>
+    </div>
+
+    <div class="btn-grid">
+      <button class="btn btn-excel" id="btnExportExcel">
+        📊 Descargar Excel (.xlsx)
+      </button>
+      <button class="btn btn-notes" id="btnExportNotes">
+        📝 Descargar Notas (.txt)
+      </button>
+      <button class="btn btn-secondary" id="btnCopyText">
+        📋 Copiar Texto
+      </button>
+      <button class="btn btn-share" id="btnShareNative">
+        📤 Compartir (WhatsApp/Keep)
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel 4: Historial Reciente en este Teléfono -->
+  <div class="card">
+    <div class="card-title">
+      <span>📚 Escaneos Recientes</span>
+      <button id="btnClearHistory" style="background:none; border:none; color:var(--text-muted); font-size: 0.75rem; cursor:pointer;">Borrar historial</button>
+    </div>
+    <div id="historyList">
+      <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 10px;">Aún no tienes lecturas guardadas.</p>
+    </div>
+  </div>
+
+  <script>
+    // Referencias DOM
+    const cameraInput = document.getElementById("cameraInput");
+    const galleryInput = document.getElementById("galleryInput");
+    const btnCamera = document.getElementById("btnCamera");
+    const btnGallery = document.getElementById("btnGallery");
+    const btnLiveView = document.getElementById("btnLiveView");
+    const btnSnapshotVideo = document.getElementById("btnSnapshotVideo");
+    const videoLive = document.getElementById("videoLive");
+    const previewImg = document.getElementById("previewImg");
+    const previewPlaceholder = document.getElementById("previewPlaceholder");
+    const progressBox = document.getElementById("progressBox");
+    const progressStatus = document.getElementById("progressStatus");
+    const progressPercent = document.getElementById("progressPercent");
+    const progressBar = document.getElementById("progressBar");
+    const transcribedText = document.getElementById("transcribedText");
+    const statsWords = document.getElementById("statsWords");
+    const statsChars = document.getElementById("statsChars");
+    const statsLines = document.getElementById("statsLines");
+    const langSelect = document.getElementById("langSelect");
+    const filterSelect = document.getElementById("filterSelect");
+    const btnExportExcel = document.getElementById("btnExportExcel");
+    const btnExportNotes = document.getElementById("btnExportNotes");
+    const btnCopyText = document.getElementById("btnCopyText");
+    const btnShareNative = document.getElementById("btnShareNative");
+    const btnClear = document.getElementById("btnClear");
+    const historyList = document.getElementById("historyList");
+    const btnClearHistory = document.getElementById("btnClearHistory");
+
+    let liveStream = null;
+    let currentImageBlob = null;
+
+    // Disparadores de captura
+    btnCamera.addEventListener("click", () => {
+      stopLiveStream();
+      cameraInput.click();
+    });
+
+    btnGallery.addEventListener("click", () => {
+      stopLiveStream();
+      galleryInput.click();
+    });
+
+    cameraInput.addEventListener("change", handleFileChosen);
+    galleryInput.addEventListener("change", handleFileChosen);
+
+    // Manejador cuando el usuario toma una foto o elige una imagen
+    function handleFileChosen(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      currentImageBlob = file;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        showPreviewImage(event.target.result);
+        processOCR(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showPreviewImage(dataUrl) {
+      videoLive.style.display = "none";
+      btnSnapshotVideo.style.display = "none";
+      previewPlaceholder.style.display = "none";
+      previewImg.src = dataUrl;
+      previewImg.style.display = "block";
+    }
+
+    // Modo de Cámara en Vivo con WebRTC
+    btnLiveView.addEventListener("click", async () => {
+      if (liveStream) {
+        stopLiveStream();
+        return;
+      }
+      try {
+        const constraints = {
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        };
+        liveStream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoLive.srcObject = liveStream;
+        videoLive.style.display = "block";
+        btnSnapshotVideo.style.display = "block";
+        previewImg.style.display = "none";
+        previewPlaceholder.style.display = "none";
+        btnLiveView.textContent = "🛑 Detener Cámara";
+      } catch (err) {
+        alert("No se pudo iniciar la cámara en vivo del navegador. Usa el botón 'TOMAR FOTO CON CÁMARA' que abre la app nativa de tu teléfono.");
+      }
+    });
+
+    btnSnapshotVideo.addEventListener("click", () => {
+      if (!liveStream) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = videoLive.videoWidth || 1280;
+      canvas.height = videoLive.videoHeight || 720;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(videoLive, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+      stopLiveStream();
+      showPreviewImage(dataUrl);
+      processOCR(dataUrl);
+    });
+
+    function stopLiveStream() {
+      if (liveStream) {
+        liveStream.getTracks().forEach(t => t.stop());
+        liveStream = null;
+        videoLive.style.display = "none";
+        btnSnapshotVideo.style.display = "none";
+        btnLiveView.textContent = "📹 Cámara en Vivo";
+      }
+    }
+
+    // Preprocesamiento de imagen en Canvas
+    async function preprocessImage(imageDataUrl, filterMode) {
+      if (filterMode === "none") return imageDataUrl;
+
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const d = imgData.data;
+
+          if (filterMode === "binarize") {
+            // Conversión Binarizada (Blanco y Negro para texto)
+            for (let i = 0; i < d.length; i += 4) {
+              const v = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+              const thresh = v > 135 ? 255 : 0;
+              d[i] = thresh;
+              d[i+1] = thresh;
+              d[i+2] = thresh;
+            }
+          } else if (filterMode === "auto") {
+            // Auto-contraste y escala de grises
+            for (let i = 0; i < d.length; i += 4) {
+              const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+              // Contraste sigmoideo
+              const enhanced = Math.min(255, Math.max(0, (gray - 128) * 1.35 + 128));
+              d[i] = enhanced;
+              d[i+1] = enhanced;
+              d[i+2] = enhanced;
+            }
+          }
+
+          ctx.putImageData(imgData, 0, 0);
+          resolve(canvas.toDataURL("image/jpeg", 0.95));
+        };
+        img.src = imageDataUrl;
+      });
+    }
+
+    // Proceso OCR con Tesseract.js en el cliente
+    async function processOCR(dataUrl) {
+      progressBox.style.display = "block";
+      progressBar.style.width = "5%";
+      progressPercent.textContent = "5%";
+      progressStatus.textContent = "Preparando imagen y filtros...";
+
+      try {
+        const filter = filterSelect.value;
+        const processedUrl = await preprocessImage(dataUrl, filter);
+        const lang = langSelect.value;
+
+        progressStatus.textContent = "Cargando motor OCR Tesseract...";
+
+        const result = await Tesseract.recognize(
+          processedUrl,
+          lang,
+          {
+            logger: (m) => {
+              if (m.status === "recognizing text") {
+                const pct = Math.round((m.progress || 0) * 100);
+                progressBar.style.width = `${pct}%`;
+                progressPercent.textContent = `${pct}%`;
+                progressStatus.textContent = `Reconociendo texto: ${pct}%`;
+              } else if (m.status === "loading tesseract core") {
+                progressStatus.textContent = "Cargando núcleo OCR...";
+              } else if (m.status === "loading language traineddata") {
+                progressStatus.textContent = `Descargando idioma (${lang})...`;
+              }
+            }
+          }
+        );
+
+        const text = (result.data.text || "").trim();
+        progressBar.style.width = "100%";
+        progressPercent.textContent = "100%";
+        progressStatus.textContent = "¡Transcripción completada!";
+
+        setTimeout(() => {
+          progressBox.style.display = "none";
+        }, 1200);
+
+        if (!text) {
+          alert("No se detectó texto con suficiente nitidez. Prueba acercar más la cámara o activar el filtro 'Blanco y Negro'.");
+          return;
+        }
+
+        // Anexar o reemplazar
+        const prev = transcribedText.value.trim();
+        if (prev) {
+          if (confirm("¿Deseas AÑADIR este nuevo texto al final del texto actual?")) {
+            transcribedText.value = prev + "\n\n--- Nueva Foto ---\n" + text;
+          } else {
+            transcribedText.value = text;
+          }
+        } else {
+          transcribedText.value = text;
+        }
+
+        updateStats();
+        saveToHistory(text);
+
+        // Scroll al editor
+        transcribedText.scrollIntoView({ behavior: "smooth" });
+
+      } catch (err) {
+        console.error(err);
+        progressBox.style.display = "none";
+        alert("Error durante el OCR: " + err.message);
+      }
+    }
+
+    // Estadísticas en tiempo real
+    function updateStats() {
+      const txt = transcribedText.value.trim();
+      const words = txt ? txt.split(/\s+/).filter(Boolean).length : 0;
+      const chars = txt.length;
+      const lines = txt ? txt.split("\n").filter(Boolean).length : 0;
+
+      statsWords.textContent = `${words} palabras`;
+      statsChars.textContent = `${chars} caracteres`;
+      statsLines.textContent = `${lines} líneas`;
+    }
+
+    transcribedText.addEventListener("input", updateStats);
+
+    // Exportar a Excel (.xlsx) usando SheetJS
+    btnExportExcel.addEventListener("click", () => {
+      const text = transcribedText.value.trim();
+      if (!text) {
+        alert("No hay texto para exportar a Excel.");
+        return;
+      }
+
+      const lines = text.split("\n").filter(l => l.trim().length > 0);
+      const nowStr = new Date().toLocaleString("es-ES");
+
+      const rows = [
+        ["#", "Texto Transcrito", "Fecha y Hora", "Dispositivo"]
+      ];
+
+      lines.forEach((line, idx) => {
+        rows.push([idx + 1, line.trim(), nowStr, "Móvil Android"]);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+
+      // Anchos de columna sugeridos
+      ws["!cols"] = [
+        { wch: 6 },
+        { wch: 50 },
+        { wch: 22 },
+        { wch: 16 }
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, "Transcripciones");
+      const dateName = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `transcripcion_movil_${dateName}.xlsx`);
+    });
+
+    // Exportar a Notas (.txt)
+    btnExportNotes.addEventListener("click", () => {
+      const text = transcribedText.value.trim();
+      if (!text) {
+        alert("No hay texto para guardar.");
+        return;
+      }
+
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateName = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `notas_transcripcion_${dateName}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Copiar al Portapapeles
+    btnCopyText.addEventListener("click", async () => {
+      const text = transcribedText.value.trim();
+      if (!text) {
+        alert("No hay texto para copiar.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        const originalText = btnCopyText.textContent;
+        btnCopyText.textContent = "✅ ¡Copiado!";
+        setTimeout(() => { btnCopyText.textContent = originalText; }, 2000);
+      } catch (err) {
+        // Fallback para navegadores antiguos
+        transcribedText.select();
+        document.execCommand("copy");
+        alert("Texto copiado al portapapeles.");
+      }
+    });
+
+    // Compartir mediante Web Share API nativa de Android
+    btnShareNative.addEventListener("click", async () => {
+      const text = transcribedText.value.trim();
+      if (!text) {
+        alert("No hay texto para compartir.");
+        return;
+      }
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: "Texto Transcrito OCR",
+            text: text
+          });
+        } catch (err) {
+          if (err.name !== "AbortError") {
+            alert("No se pudo compartir: " + err.message);
+          }
+        }
+      } else {
+        alert("La función de compartir no está disponible en este navegador. Puedes usar el botón 'Copiar Texto'.");
+      }
+    });
+
+    // Limpiar editor
+    btnClear.addEventListener("click", () => {
+      if (transcribedText.value && confirm("¿Deseas borrar todo el texto actual?")) {
+        transcribedText.value = "";
+        updateStats();
+      }
+    });
+
+    // Gestión del Historial Local
+    function loadHistory() {
+      const stored = localStorage.getItem("ocr_history");
+      if (!stored) {
+        historyList.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 10px;">Aún no tienes lecturas guardadas.</p>';
+        return;
+      }
+      try {
+        const items = JSON.parse(stored);
+        if (items.length === 0) {
+          historyList.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 10px;">Aún no tienes lecturas guardadas.</p>';
+          return;
+        }
+        historyList.innerHTML = items.map((it, idx) => `
+          <div class="history-item" onclick="loadHistoryItem(${idx})">
+            <div class="history-header">📅 ${it.date} (${it.words} palabras)</div>
+            <div class="history-preview">${escapeHtml(it.text)}</div>
+          </div>
+        `).join("");
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function saveToHistory(text) {
+      let items = [];
+      try {
+        items = JSON.parse(localStorage.getItem("ocr_history") || "[]");
+      } catch (e) { items = []; }
+
+      const words = text.split(/\s+/).filter(Boolean).length;
+      items.unshift({
+        date: new Date().toLocaleString("es-ES"),
+        text: text,
+        words: words
+      });
+
+      // Guardar máximo 15 elementos
+      items = items.slice(0, 15);
+      localStorage.setItem("ocr_history", JSON.stringify(items));
+      loadHistory();
+    }
+
+    window.loadHistoryItem = function(idx) {
+      try {
+        const items = JSON.parse(localStorage.getItem("ocr_history") || "[]");
+        if (items[idx]) {
+          transcribedText.value = items[idx].text;
+          updateStats();
+          transcribedText.scrollIntoView({ behavior: "smooth" });
+        }
+      } catch (e) {}
+    };
+
+    btnClearHistory.addEventListener("click", () => {
+      if (confirm("¿Deseas vaciar el historial guardado en este teléfono?")) {
+        localStorage.removeItem("ocr_history");
+        loadHistory();
+      }
+    });
+
+    function escapeHtml(str) {
+      return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    // Inicializar historial al cargar
+    loadHistory();
+
+    // Registro de Service Worker para soporte PWA Offline
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
